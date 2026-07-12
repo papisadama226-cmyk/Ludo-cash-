@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Ludo Cash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12142b;
+    --panel:#1c1f42;
+    --panel-2:#252a52;
+    --red:#e63946;
+    --green:#06a77d;
+    --yellow:#f4b400;
+    --blue:#3a86ff;
+    --gold:#ffd166;
+    --text:#f1f1f6;
+    --text-dim:#9797b8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Baloo 2', system-ui, sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+  }
+  .topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:14px 16px;
+    background:var(--panel);
+    border-bottom:1px solid #2c2f5a;
+  }
+  .pill{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:var(--panel-2);
+    padding:8px 14px;
+    border-radius:999px;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:700;
+    font-size:14px;
+  }
+  .pill.gold{ color:var(--gold); border:1px solid #4a3d1a; }
+  .btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    border:none;
+    border-radius:14px;
+    padding:12px 18px;
+    font-size:16px;
+    cursor:pointer;
+    color:#14162b;
+    background:var(--gold);
+    transition: transform .1s ease;
+  }
+  .btn:active{ transform:scale(0.96); }
+  .btn.outline{
+    background:transparent;
+    color:var(--text);
+    border:1px solid #3a3f70;
+  }
+  .btn:disabled{ opacity:.4; cursor:default; }
+
+  .screen{ flex:1; display:flex; flex-direction:column; padding:16px; gap:16px; }
+  .card{
+    background:var(--panel);
+    border-radius:18px;
+    padding:16px;
+    border:1px solid #262a52;
+  }
+  h1{ font-size:20px; margin:0 0 4px; }
+  h2{ font-size:16px; color:var(--text-dim); margin:0 0 12px; font-weight:500; }
+  .lobby-list{ display:flex; flex-direction:column; gap:10px; }
+  .lobby-item{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--panel-2); padding:12px 14px; border-radius:12px;
+  }
+  input[type=number]{
+    background:var(--panel-2); border:1px solid #3a3f70; color:var(--text);
+    border-radius:10px; padding:10px 12px; font-size:16px; width:100%;
+    font-family:'JetBrains Mono', monospace;
+  }
+  label{ font-size:13px; color:var(--text-dim); display:block; margin-bottom:6px; }
+
+  /* --- Plateau --- */
+  .board-wrap{ display:flex; justify-content:center; }
+  .board{
+    display:grid;
+    grid-template-columns:repeat(15, 1fr);
+    grid-template-rows:repeat(15, 1fr);
+    width:min(94vw, 420px);
+    aspect-ratio:1/1;
+    background:#0d0e22;
+    border-radius:12px;
+    overflow:hidden;
+    position:relative;
+    border:3px solid #2c2f5a;
+  }
+  .cell{
+    border:1px solid rgba(255,255,255,0.04);
+  }
+  .yard-red{ background:rgba(230,57,70,0.18); }
+  .yard-green{ background:rgba(6,167,125,0.18); }
+  .yard-yellow{ background:rgba(244,180,0,0.18); }
+  .yard-blue{ background:rgba(58,134,255,0.18); }
+  .path-cell{ background:#1a1c3a; }
+  .home-red{ background:rgba(230,57,70,0.4); }
+  .home-green{ background:rgba(6,167,125,0.4); }
+  .home-yellow{ background:rgba(244,180,0,0.4); }
+  .home-blue{ background:rgba(58,134,255,0.4); }
+  .center{ background:var(--gold); }
+
+  .token{
+    position:absolute;
+    width:7%; height:7%;
+    border-radius:50%;
+    border:2px solid #0d0e22;
+    transform:translate(-50%,-50%);
+    box-shadow:0 2px 4px rgba(0,0,0,.4);
+    transition: top .25s ease, left .25s ease;
+    z-index:5;
+  }
+  .token-red{ background:var(--red); }
+  .token-green{ background:var(--green); }
+  .token-yellow{ background:var(--yellow); }
+  .token-blue{ background:var(--blue); }
+
+  .bottom-bar{
+    padding:16px;
+    background:var(--panel);
+    border-top:1px solid #2c2f5a;
+    display:flex; align-items:center; gap:16px;
+  }
+  .dice{
+    width:64px; height:64px;
+    background:var(--gold);
+    border-radius:16px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; font-weight:800; color:#14162b;
+    cursor:pointer;
+    flex-shrink:0;
+    transition: transform .15s ease;
+  }
+  .dice.rolling{ animation: shake .5s ease; }
+  @keyframes shake{
+    0%,100%{ transform:rotate(0); }
+    25%{ transform:rotate(-15deg); }
+    75%{ transform:rotate(15deg); }
+  }
+  .status-text{ flex:1; font-size:14px; color:var(--text-dim); }
+  .status-text b{ color:var(--text); }
+
+  #app{ display:flex; flex-direction:column; min-height:100vh; }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="topbar">
+    <div class="pill gold">💰 <span id="solde">--</span> FCFA</div>
+    <button class="btn outline" id="btnRecharger" style="padding:8px 14px;font-size:14px;">Recharger</button>
+  </div>
+
+  <!-- Écran Lobby -->
+  <div class="screen" id="screenLobby">
+    <div class="card">
+      <h1>Créer une partie</h1>
+      <h2>Choisis ta mise et le format</h2>
+      <label>Mise par joueur (FCFA)</label>
+      <input type="number" id="miseInput" placeholder="500" min="150" step="50" />
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn outline" data-format="2" id="btnFormat2">1v1</button>
+        <button class="btn outline" data-format="4" id="btnFormat4">4 joueurs</button>
+      </div>
+      <button class="btn" id="btnCreerPartie" style="width:100%; margin-top:14px;">Créer la partie</button>
+    </div>
+
+    <div class="card">
+      <h1>Parties en attente</h1>
+      <h2>Rejoins une table existante</h2>
+      <div class="lobby-list" id="lobbyList">
+        <div class="status-text">Chargement...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Écran Jeu -->
+  <div class="screen hidden" id="screenGame">
+    <div class="card" style="text-align:center;">
+      <div class="pill gold" style="margin:0 auto; width:fit-content;">🏆 Cagnotte : <span id="potValue">0</span> FCFA</div>
+    </div>
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+  </div>
+
+  <div class="bottom-bar hidden" id="bottomBar">
+    <div class="dice" id="diceBtn">🎲</div>
+    <div class="status-text" id="statusText">En attente...</div>
+  </div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, signInAnonymously, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot,
+  collection, addDoc, query, where, serverTimestamp, arrayUnion
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCPlJJKidt1WOR4KgGPC9NyiZtkrYV9dCs",
+  authDomain: "pawtournoi.firebaseapp.com",
+  projectId: "pawtournoi",
+  storageBucket: "pawtournoi.firebasestorage.app",
+  messagingSenderId: "1073189230215",
+  appId: "1:1073189230215:web:0692cb7e00e8c1b48bca22"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let currentGameId = null;
+let unsubGame = null;
+let selectedFormat = 2;
+
+const COLORS = ['red', 'green', 'yellow', 'blue'];
+
+// --- Chemin commun (52 cases), coordonnées [row, col] sur grille 15x15 ---
+const PATH = [
+  [6,1],[6,2],[6,3],[6,4],[6,5],
+  [5,6],[4,6],[3,6],[2,6],[1,6],[0,6],
+  [0,7],
+  [0,8],
+  [1,8],[2,8],[3,8],[4,8],[5,8],
+  [6,9],[6,10],[6,11],[6,12],[6,13],[6,14],
+  [7,14],
+  [8,14],
+  [8,13],[8,12],[8,11],[8,10],[8,9],
+  [9,8],[10,8],[11,8],[12,8],[13,8],[14,8],
+  [14,7],
+  [14,6],
+  [13,6],[12,6],[11,6],[10,6],[9,6],
+  [8,5],[8,4],[8,3],[8,2],[8,1],[8,0],
+  [7,0],
+];
+// Entrée de chaque couleur sur le chemin commun (index dans PATH)
+const ENTRY_OFFSET = { red: 0, green: 13, yellow: 26, blue: 39 };
+// Dernière case avant le couloir final (juste avant l'entrée, pour calcul)
+const HOME_STRETCH = {
+  red:    [[7,1],[7,2],[7,3],[7,4],[7,5],[7,6]],
+  green:  [[1,7],[2,7],[3,7],[4,7],[5,7],[6,7]],
+  yellow: [[7,13],[7,12],[7,11],[7,10],[7,9],[7,8]],
+  blue:   [[13,7],[12,7],[11,7],[10,7],[9,7],[8,7]],
+};
+const YARD_SLOTS = {
+  red:    [[1,1],[1,3],[3,1],[3,3]],
+  green:  [[1,10],[1,12],[3,10],[3,12]],
+  yellow: [[10,10],[10,12],[12,10],[12,12]],
+  blue:   [[10,1],[10,3],[12,1],[12,3]],
+};
+
+function cellToPercent([row, col]) {
+  return { top: `${(row + 0.5) / 15 * 100}%`, left: `${(col + 0.5) / 15 * 100}%` };
+}
+
+function absolutePosition(color, relPos, slotIndex) {
+  if (relPos === -1) return cellToPercent(YARD_SLOTS[color][slotIndex]);
+  if (relPos >= 51) return cellToPercent(HOME_STRETCH[color][relPos - 51] || [7,7]);
+  const idx = (ENTRY_OFFSET[color] + relPos) % 52;
+  return cellToPercent(PATH[idx]);
+}
+
+// --- Auth ---
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    await signInAnonymously(auth);
+    return;
+  }
+  currentUser = user;
+  await ensureUserDoc(user.uid);
+  listenWallet(user.uid);
+  listenLobby();
+});
+
+async function ensureUserDoc(uid) {
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    // Note : l'écriture initiale se fait ici côté client uniquement pour le solde à 0.
+    // Toute modification ultérieure du solde passe par les fonctions serverless (Admin SDK).
+    await setDoc(ref, { solde: 0, createdAt: serverTimestamp() });
+  }
+}
+
+function listenWallet(uid) {
+  onSnapshot(doc(db, 'users', uid), (snap) => {
+    document.getElementById('solde').textContent = snap.data()?.solde ?? 0;
+  });
+}
+
+// --- Recharge (PayDunya) ---
+document.getElementById('btnRecharger').addEventListener('click', async () => {
+  const montant = prompt("Montant à recharger (FCFA) :", "1000");
+  if (!montant || isNaN(montant)) return;
+  const res = await fetch('/api/create-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ montant: Number(montant), uid: currentUser.uid }),
+  });
+  const data = await res.json();
+  if (data.url) window.location.href = data.url;
+  else alert("Erreur lors de la création du paiement.");
+});
+
+// --- Création de partie ---
+document.getElementById('btnFormat2').addEventListener('click', () => setFormat(2));
+document.getElementById('btnFormat4').addEventListener('click', () => setFormat(4));
+function setFormat(n) {
+  selectedFormat = n;
+  document.getElementById('btnFormat2').style.background = n === 2 ? 'var(--gold)' : 'transparent';
+  document.getElementById('btnFormat2').style.color = n === 2 ? '#14162b' : 'var(--text)';
+  document.getElementById('btnFormat4').style.background = n === 4 ? 'var(--gold)' : 'transparent';
+  document.getElementById('btnFormat4').style.color = n === 4 ? '#14162b' : 'var(--text)';
+}
+setFormat(2);
+
+document.getElementById('btnCreerPartie').addEventListener('click', async () => {
+  const mise = Number(document.getElementById('miseInput').value);
+  if (!mise || mise < 150) { alert("Mise minimum : 150 FCFA"); return; }
+
+  const soldeSnap = await getDoc(doc(db, 'users', currentUser.uid));
+  const solde = soldeSnap.data()?.solde || 0;
+  if (solde < mise) { alert("Solde insuffisant. Recharge ton wallet."); return; }
+
+  const gameRef = await addDoc(collection(db, 'games'), {
+    players: [currentUser.uid],
+    colors: { [currentUser.uid]: COLORS[0] },
+    maxPlayers: selectedFormat,
+    mise,
+    pot: mise, // NB: en prod, le débit du wallet doit être fait via une fonction serverless dédiée avant la création
+    status: 'attente',
+    tokens: { [currentUser.uid]: [-1, -1, -1, -1] },
+    currentTurnUid: currentUser.uid,
+    awaitingMove: false,
+    createdAt: serverTimestamp(),
+  });
+  joinGameView(gameRef.id);
+});
+
+function listenLobby() {
+  const q = query(collection(db, 'games'), where('status', '==', 'attente'));
+  onSnapshot(q, (snap) => {
+    const list = document.getElementById('lobbyList');
+    list.innerHTML = '';
+    if (snap.empty) {
+      list.innerHTML = '<div class="status-text">Aucune partie en attente. Crées-en une !</div>';
+      return;
+    }
+    snap.forEach((d) => {
+      const g = d.data();
+      if (g.players.includes(currentUser?.uid)) return; // déjà dedans
+      const row = document.createElement('div');
+      row.className = 'lobby-item';
+      row.innerHTML = `<span>${g.mise} FCFA · ${g.players.length}/${g.maxPlayers}</span>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn'; btn.style.padding = '8px 14px'; btn.style.fontSize = '13px';
+      btn.textContent = 'Rejoindre';
+      btn.onclick = () => rejoindre(d.id, g);
+      row.appendChild(btn);
+      list.appendChild(row);
+    });
+  });
+}
+
+async function rejoindre(gameId, game) {
+  const soldeSnap = await getDoc(doc(db, 'users', currentUser.uid));
+  const solde = soldeSnap.data()?.solde || 0;
+  if (solde < game.mise) { alert("Solde insuffisant."); return; }
+
+  const usedColors = Object.values(game.colors || {});
+  const nextColor = COLORS.find(c => !usedColors.includes(c));
+  const newPlayers = [...game.players, currentUser.uid];
+
+  await updateDoc(doc(db, 'games', gameId), {
+    players: newPlayers,
+    [`colors.${currentUser.uid}`]: nextColor,
+    [`tokens.${currentUser.uid}`]: [-1, -1, -1, -1],
+    pot: game.pot + game.mise,
+    status: newPlayers.length >= game.maxPlayers ? 'en_cours' : 'attente',
+  });
+  joinGameView(gameId);
+}
+
+// --- Vue de jeu ---
+function joinGameView(gameId) {
+  currentGameId = gameId;
+  document.getElementById('screenLobby').classList.add('hidden');
+  document.getElementById('screenGame').classList.remove('hidden');
+  document.getElementById('bottomBar').classList.remove('hidden');
+  buildBoardSkeleton();
+
+  if (unsubGame) unsubGame();
+  unsubGame = onSnapshot(doc(db, 'games', gameId), (snap) => {
+    renderGame(snap.data());
+  });
+}
+
+function buildBoardSkeleton() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  for (let r = 0; r < 15; r++) {
+    for (let c = 0; c < 15; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (r < 6 && c < 6) cell.classList.add('yard-red');
+      else if (r < 6 && c > 8) cell.classList.add('yard-green');
+      else if (r > 8 && c > 8) cell.classList.add('yard-yellow');
+      else if (r > 8 && c < 6) cell.classList.add('yard-blue');
+      else if (r === 7 && c === 7) cell.classList.add('center');
+      else cell.classList.add('path-cell');
+      board.appendChild(cell);
+    }
+  }
+  // Colorer les couloirs finaux
+  Object.entries(HOME_STRETCH).forEach(([color, cells]) => {
+    cells.forEach(([r, c]) => {
+      const idx = r * 15 + c;
+      board.children[idx].className = 'cell home-' + color;
+    });
+  });
+}
+
+function renderGame(game) {
+  if (!game) return;
+  document.getElementById('potValue').textContent = game.pot;
+
+  const board = document.getElementById('board');
+  board.querySelectorAll('.token').forEach(t => t.remove());
+
+  Object.entries(game.tokens || {}).forEach(([uid, positions]) => {
+    const color = game.colors[uid];
+    positions.forEach((pos, i) => {
+      const el = document.createElement('div');
+      el.className = `token token-${color}`;
+      const { top, left } = absolutePosition(color, pos, i);
+      el.style.top = top; el.style.left = left;
+      board.appendChild(el);
+    });
+  });
+
+  const isMyTurn = game.currentTurnUid === currentUser.uid;
+  const dice = document.getElementById('diceBtn');
+  const status = document.getElementById('statusText');
+
+  if (game.status === 'terminee') {
+    status.innerHTML = game.winnerUid === currentUser.uid
+      ? `🎉 Tu as gagné la cagnotte !`
+      : `Partie terminée.`;
+    dice.style.pointerEvents = 'none';
+    dice.style.opacity = 0.3;
+    return;
+  }
+
+  if (game.awaitingMove && isMyTurn) {
+    status.innerHTML = `Résultat : <b>${game.lastRoll}</b> — touche un pion à déplacer`;
+    enableTokenSelection(game);
+  } else if (isMyTurn) {
+    status.innerHTML = `<b>À toi de jouer</b> — lance le dé`;
+  } else {
+    status.textContent = "En attente de l'adversaire...";
+  }
+
+  dice.style.pointerEvents = (isMyTurn && !game.awaitingMove) ? 'auto' : 'none';
+  dice.style.opacity = (isMyTurn && !game.awaitingMove) ? 1 : 0.4;
+}
+
+function enableTokenSelection(game) {
+  document.querySelectorAll('.token').forEach((el, i) => {
+    el.style.cursor = 'pointer';
+  });
+  // Simplifié : on attache le clic sur les pions du joueur courant uniquement
+  const board = document.getElementById('board');
+  const myTokens = game.tokens[currentUser.uid] || [];
+  const tokenEls = [...board.querySelectorAll(`.token-${game.colors[currentUser.uid]}`)];
+  tokenEls.forEach((el, i) => {
+    el.onclick = () => moveToken(i);
+  });
+}
+
+async function moveToken(tokenIndex) {
+  const idToken = await currentUser.getIdToken();
+  const res = await fetch('/api/move-token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+    body: JSON.stringify({ gameId: currentGameId, tokenIndex }),
+  });
+  const data = await res.json();
+  if (data.error) alert("Coup impossible : " + data.error);
+}
+
+document.getElementById('diceBtn').addEventListener('click', async () => {
+  const dice = document.getElementById('diceBtn');
+  dice.classList.add('rolling');
+  const idToken = await currentUser.getIdToken();
+  const res = await fetch('/api/roll-dice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+    body: JSON.stringify({ gameId: currentGameId }),
+  });
+  const data = await res.json();
+  setTimeout(() => dice.classList.remove('rolling'), 500);
+  if (data.error) alert("Erreur : " + data.error);
+  else dice.textContent = data.value;
+});
+</script>
+</body>
+</html>
